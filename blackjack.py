@@ -21,7 +21,9 @@ N_DECKS = 6
 STAY_OUTCOMES_FILE = "./stay_outcomes_%s.txt" % (N_HANDS)
 DOUBLE_OUTCOMES_FILE = "./double_outcomes_%s.txt" % (N_HANDS)
 HIT_OUTCOMES_FILE = "./hit_outcomes_%s.txt" % (N_HANDS)
-MOVE_OUTCOMES_FILE = "./move_outcomes_%s.txt" % (N_HANDS)
+SOFT_OUTCOMES_FILE = "./soft_outcomes_%s.txt" % (N_HANDS)
+HARD_MOVES_FILE = "./hard_moves_%s.txt" % (N_HANDS)
+SOFT_MOVES_FILE = "./soft_moves_%s.txt" % (N_HANDS)
 
 KEEP_TIMING = 0
 
@@ -126,22 +128,38 @@ def create_double_outcomes(desired_iterations):
     pickle_outcomes(double_outcomes, DOUBLE_OUTCOMES_FILE)
     return double_outcomes
 
-def create_hit_outcomes(desired_iterations):
+def create_hit_and_soft_outcomes(desired_iterations):
+    HIT_OUTCOMES_FOUND = False
     try:
         hit_outcomes = unpickle_outcomes(HIT_OUTCOMES_FILE, desired_iterations)
-        print "Found pickled run of hit outcomes - returning..."
-        return hit_outcomes
+        print "Found pickled run of hit outcomes..."
+        HIT_OUTCOMES_FOUND = True
     except IOError:
-        print "Couldn't find pickled hit outcomes - creating them..."
+        print "Couldn't find pickled hit outcomes - creating hit outcomes and soft outcomes..."
     except PickleError:
         print "Pickle error - continuing..."
+
+    if HIT_OUTCOMES_FOUND:
+        try:
+            soft_outcomes = unpickle_outcomes(SOFT_OUTCOMES_FILE, desired_iterations)
+            print "...and found pickled run of soft outcomes as well - returning..."
+            return (hit_outcomes, soft_outcomes)
+        except IOError:
+            print "...but couldn't find pickled soft outcomes - creating hit outcomes and soft outcomes..."
+        except PickleError:
+            print "Pickle error - continuing..."
 
     stay_outcomes = create_stay_outcomes(desired_iterations)
     double_outcomes = create_double_outcomes(desired_iterations)
     hit_outcomes = {"ITERATIONS" : desired_iterations}
+    soft_outcomes = {"ITERATIONS" : desired_iterations}
     hit_outcomes[21] = {}
+    soft_outcomes[21] = {}
     for upc in stay_outcomes[21]:
         hit_outcomes[21][upc] = [0, 13]
+        soft_outcomes[21][upc] = [0, 13]
+
+    # Hard hits to a 2-10
     for cur_val in reversed(range(3, 21)):
         hit_outcomes[cur_val] = {}
         for upc in stay_outcomes[cur_val]:
@@ -158,44 +176,94 @@ def create_hit_outcomes(desired_iterations):
                         percent_win = max(hit_percent, stay_percent)
                     hit_outcomes[cur_val][upc][0] += percent_win
 
-            if cur_val + 11 <= 21:
-                card_val = 11
-            else:
-                card_val = 1
-            stay_percent = calculate_percent(stay_outcomes, cur_val + card_val, upc)
-            hit_percent = calculate_percent(hit_outcomes, cur_val + card_val, upc)
-            hit_outcomes[cur_val][upc][0] += max(stay_percent, hit_percent)
+            # Missing A
+            hit_outcomes[cur_val][upc][1] = 12
 
-            hit_outcomes[cur_val][upc][1] = 13
+    # Soft hits
+    for cur_val in reversed(range(3,22)):
+        soft_outcomes[cur_val] = {}
+        for upc in stay_outcomes[cur_val]:
+            soft_outcomes[cur_val][upc] = [0,0]
+
+            #A-10 (second A can only be 1)
+            for i in range(1,11):
+                if cur_val + i <= 21:
+                    new_val = cur_val + i
+                    hit_percent = calculate_percent(soft_outcomes, new_val, upc)
+                else:
+                    new_val = cur_val + i - 10
+                    hit_percent = calculate_percent(hit_outcomes, new_val, upc)
+                stay_percent = calculate_percent(stay_outcomes, new_val, upc)
+
+                if i == 10:
+                    percent_win = 4 * max(hit_percent, stay_percent)
+                else:
+                    percent_win = max(hit_percent, stay_percent)
+                soft_outcomes[cur_val][upc][0] += percent_win
+
+            soft_outcomes[cur_val][upc][1] = 13
+
+    # Hard hits to an A
+    for cur_val in reversed(range(3, 21)):
+        for upc in stay_outcomes[cur_val]:
+
+            if cur_val + 11 <= 21:
+                new_val = cur_val + 11
+                hit_percent = calculate_percent(soft_outcomes, new_val, upc)
+            else:
+                new_val = cur_val + 1
+                hit_percent = calculate_percent(hit_outcomes, new_val, upc)
+
+            stay_percent = calculate_percent(stay_outcomes, new_val, upc)
+            percent_win = max(hit_percent, stay_percent)
+            hit_outcomes[cur_val][upc][0] += percent_win
+
+            hit_outcomes[cur_val][upc][1] += 1
 
     pickle_outcomes(hit_outcomes, HIT_OUTCOMES_FILE)
-    return hit_outcomes
+    pickle_outcomes(soft_outcomes, SOFT_OUTCOMES_FILE)
+    return (hit_outcomes, soft_outcomes)
 
-def create_move_outcomes(desired_iterations):
+def create_moves(desired_iterations):
+    HARD_MOVES_FOUND = False
     try:
-        move_outcomes = unpickle_outcomes(MOVE_OUTCOMES_FILE, desired_iterations)
-        print "Found pickled run of move outcomes - returning..."
-        return move_outcomes
+        hard_moves = unpickle_outcomes(HARD_MOVES_FILE, desired_iterations)
+        print "Found pickled run of hard moves..."
+        HARD_MOVES_FOUND = True
     except IOError:
         print "Couldn't find pickled move outcomes - creating them..."
     except PickleError:
         print "Pickle error - continuing..."
 
+    if HARD_MOVES_FOUND:
+        try:
+            soft_moves = unpickle_outcomes(SOFT_MOVES_FILE, desired_iterations)
+            print "...and found pickled run of soft moves as well - returning..."
+            return (hard_moves, soft_moves)
+        except IOError:
+            print "...but couldn't find pickled soft moves - creating them..."
+        except PickleError:
+            print "Pickle error - continuing..."
+
     stay_outcomes = create_stay_outcomes(desired_iterations)
     double_outcomes = create_double_outcomes(desired_iterations)
-    hit_outcomes = create_hit_outcomes(desired_iterations)
+    (hit_outcomes, soft_outcomes) = create_hit_and_soft_outcomes(desired_iterations)
 
-    move_outcomes = {"ITERATIONS" : desired_iterations}
+    hard_moves = {"ITERATIONS" : desired_iterations}
+    soft_moves = {"ITERATIONS" : desired_iterations}
     for v in double_outcomes:
         if v == "ITERATIONS":
             continue
-        move_outcomes[v] = {}
+        hard_moves[v] = {}
+        soft_moves[v] = {}
         for upc in double_outcomes[v]:
             hit_percent = calculate_percent(hit_outcomes, v, upc)
+            soft_percent = calculate_percent(soft_outcomes, v, upc)
             stay_percent = calculate_percent(stay_outcomes, v, upc)
             double_percent = calculate_percent(double_outcomes, v, upc)
 
             hit_EV = hit_percent
+            soft_EV = soft_percent
             stay_EV = stay_percent
             double_EV = 2*double_percent - .5
 
@@ -205,25 +273,38 @@ def create_move_outcomes(desired_iterations):
                 s = "Stay"
             else:
                 s = "Double"
+            hard_moves[v][upc] = s
 
-            move_outcomes[v][upc] = s
+            if soft_EV == max(soft_EV, double_EV, stay_EV):
+                s = "Hit"
+            elif stay_EV == max(soft_EV, stay_EV, double_EV):
+                s = "Stay"
+            else:
+                s = "Double"
+            soft_moves[v][upc] = s
 
-    pickle_outcomes(move_outcomes, MOVE_OUTCOMES_FILE)
-    return move_outcomes
+    pickle_outcomes(hard_moves, HARD_MOVES_FILE)
+    pickle_outcomes(soft_moves, SOFT_MOVES_FILE)
+    return (hard_moves, soft_moves)
 
 def main():
     stay_outcomes = create_stay_outcomes(N_HANDS)
     double_outcomes = create_double_outcomes(N_HANDS)
-    hit_outcomes = create_hit_outcomes(N_HANDS)
-    move_outcomes = create_move_outcomes(N_HANDS)
+    (hit_outcomes, soft_outcomes) = create_hit_and_soft_outcomes(N_HANDS)
+    (hard_moves, soft_moves) = create_moves(N_HANDS)
     print "\n*** STAY OUTCOMES ***"
     prettyprint_outcomes(stay_outcomes)
     print "\n*** DOUBLE OUTCOMES ***"
     prettyprint_outcomes(double_outcomes)
     print "\n*** HIT OUTCOMES ***"
     prettyprint_outcomes(hit_outcomes)
+    print "\n*** SOFT OUTCOMES ***"
+    prettyprint_outcomes(soft_outcomes)
     print "\n*** MOVE OUTCOMES ***"
-    prettyprint_moves(move_outcomes)
+    print "\n*** HARD MOVES ***"
+    prettyprint_moves(hard_moves)
+    print "\n*** SOFT MOVES ***"
+    prettyprint_moves(soft_moves)
 
 def calculate_percent(pair_nums, i, j):
     return (float(pair_nums[i][j][0]) / float(pair_nums[i][j][1]))
