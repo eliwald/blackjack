@@ -136,6 +136,19 @@ def create_hit_and_soft_outcomes(desired_iterations):
         HIT_OUTCOMES_FOUND = True
     except IOError:
         print "Couldn't find pickled hit outcomes - creating hit outcomes and soft outcomes..."
+<<<<<<< HEAD
+=======
+    except PickleError:
+        print "Pickle error - continuing..."
+
+    try:
+        soft_outcomes = unpickle_outcomes(SOFT_OUTCOMES_FILE, desired_iterations)
+        if HIT_OUTCOMES_FOUND:
+            print "...and found pickled run of soft outcomes as well - returning..."
+            return (hit_outcomes, soft_outcomes)
+    except IOError:
+        print "Couldn't find pickled soft outcomes - creating hit outcomes and soft outcomes..."
+>>>>>>> babce02df59770d603218106e2da02ca10573c27
     except PickleError:
         print "Pickle error - continuing..."
 
@@ -230,6 +243,19 @@ def create_moves(desired_iterations):
         hard_moves = unpickle_outcomes(HARD_MOVES_FILE, desired_iterations)
         print "Found pickled run of hard moves..."
         HARD_MOVES_FOUND = True
+<<<<<<< HEAD
+=======
+    except IOError:
+        print "Couldn't find pickled move outcomes - creating them..."
+    except PickleError:
+        print "Pickle error - continuing..."
+
+    try:
+        if HARD_MOVES_FOUND:
+            soft_moves = unpickle_outcomes(SOFT_MOVES_FILE, desired_iterations)
+            print "...and found pickled run of soft moves as well - returning..."
+            return (hard_moves, soft_moves)
+>>>>>>> babce02df59770d603218106e2da02ca10573c27
     except IOError:
         print "Couldn't find pickled move outcomes - creating them..."
     except PickleError:
