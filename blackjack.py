@@ -196,15 +196,36 @@ def prettyprint_outcomes(outcomes):
             except ZeroDivisionError:
                 percents[v][upc] = -1.0
 
+    sys.stdout.write("\t|")
+    for i in range(1, 11):
+        if not i == 10:
+            sys.stdout.write("    %d   |" % i)
+        else:
+            sys.stdout.write("   %d   |" % i)
+
+    sys.stdout.write("\n")
+    for j in range(1, 100):
+        sys.stdout.write("-")
+
+    sys.stdout.write("\n")
+
     for v in percents:
-        print "%d" % v
+        sys.stdout.write("%d\t|" % v)
         for upc in percents[v]:
-            print "\t%d: %.4f" % (upc, percents[v][upc])
+            if (100 * percents[v][upc] > 10):
+                sys.stdout.write(" %.2f%% |" % (100 * percents[v][upc]))
+            else:
+                sys.stdout.write(" 0%.2f%% |" % (100 * percents[v][upc]))
 
             if KEEP_TIMING:
                 end_t = time()
                 time_map["float conversion"] = end_t - start_t
                 sys.stdout.write(str(time_map) + "\n")
+        sys.stdout.write("\n")
+        for j in range(1, 100):
+            sys.stdout.write("-")
+
+        sys.stdout.write("\n")
 
 def pickle_outcomes(outcomes, fn):
     fh = open(fn, 'w')
