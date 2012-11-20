@@ -7,7 +7,16 @@ import sys
 from time import time
 from pickle import Pickler, Unpickler, PickleError
 
-N_HANDS = 10000
+DEFAULT_N_HANDS = 10000
+if len(sys.argv) > 1:
+    try:
+        N_HANDS = int(sys.argv[1])
+    except ValueError:
+        print "First argument must be an int (number of hands to try per case). Defaulting to %d." % (DEFAULT_N_HANDS)
+        N_HANDS = DEFAULT_N_HANDS
+else:
+    N_HANDS = DEFAULT_N_HANDS
+
 N_DECKS = 6
 STAY_OUTCOMES_FILE = "./stay_outcomes_%s.txt" % (N_HANDS)
 DOUBLE_OUTCOMES_FILE = "./double_outcomes_%s.txt" % (N_HANDS)
