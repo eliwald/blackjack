@@ -151,11 +151,11 @@ def create_hit_outcomes(desired_iterations):
                 if cur_val + i <= 21:
                     stay_percent = calculate_percent(stay_outcomes, cur_val + i, upc)
                     hit_percent = calculate_percent(hit_outcomes, cur_val + i, upc)
-                    if cur_val == 10:
+                    if i == 10:
                         percent_win = 4 * max(hit_percent, stay_percent)
                     else:
                         percent_win = max(hit_percent, stay_percent)
-                    hit_outcomes[cur_val][upc][0] += hit_percent
+                    hit_outcomes[cur_val][upc][0] += percent_win
 
             if cur_val + 11 <= 21:
                 card_val = 11
