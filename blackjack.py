@@ -20,6 +20,7 @@ else:
 N_DECKS = 6
 STAY_OUTCOMES_FILE = "./stay_outcomes_%s.txt" % (N_HANDS)
 DOUBLE_OUTCOMES_FILE = "./double_outcomes_%s.txt" % (N_HANDS)
+HIT_OUTCOMES_FILE = "./hit_outcomes_%s.txt" % (N_HANDS)
 
 KEEP_TIMING = 0
 
@@ -124,13 +125,64 @@ def create_double_outcomes(desired_iterations):
     pickle_outcomes(double_outcomes, DOUBLE_OUTCOMES_FILE)
     return double_outcomes
 
+def create_hit_outcomes(desired_iterations):
+    try:
+        hit_outcomes = unpickle_outcomes(HIT_OUTCOMES_FILE, desired_iterations)
+        print "Found pickled run of hit outcomes - returning..."
+        return hit_outcomes
+    except IOError:
+        print "Couldn't find pickled hit outcomes - creating them..."
+    except PickleError:
+        print "Pickle error - continuing..."
+
+    stay_outcomes = create_stay_outcomes(desired_iterations)
+    double_outcomes = create_double_outcomes(desired_iterations)
+    hit_outcomes = {"ITERATIONS" : desired_iterations}
+    hit_outcomes[21] = {}
+    for upc in stay_outcomes[21]:
+        hit_outcomes[21][upc] = [0, 13]
+    for cur_val in reversed(range(3, 21)):
+        hit_outcomes[cur_val] = {}
+        for upc in stay_outcomes[cur_val]:
+            hit_outcomes[cur_val][upc] = [0,0]
+
+            #2-10
+            for i in range(2,11):
+                if cur_val + i <= 21:
+                    stay_percent = calculate_percent(stay_outcomes, cur_val + i, upc)
+                    hit_percent = calculate_percent(hit_outcomes, cur_val + i, upc)
+                    if cur_val == 10:
+                        percent_win = 4 * max(hit_percent, stay_percent)
+                    else:
+                        percent_win = max(hit_percent, stay_percent)
+                    hit_outcomes[cur_val][upc][0] += hit_percent
+
+            if cur_val + 11 <= 21:
+                card_val = 11
+            else:
+                card_val = 1
+            stay_percent = calculate_percent(stay_outcomes, cur_val + card_val, upc)
+            hit_percent = calculate_percent(hit_outcomes, cur_val + card_val, upc)
+            hit_outcomes[cur_val][upc][0] += max(stay_percent, hit_percent)
+
+            hit_outcomes[cur_val][upc][1] = 13
+
+    pickle_outcomes(hit_outcomes, HIT_OUTCOMES_FILE)
+    return hit_outcomes
+
 def main():
     stay_outcomes = create_stay_outcomes(N_HANDS)
     double_outcomes = create_double_outcomes(N_HANDS)
+    hit_outcomes = create_hit_outcomes(N_HANDS)
     print "\n*** STAY OUTCOMES ***"
     prettyprint_outcomes(stay_outcomes)
     print "\n*** DOUBLE OUTCOMES ***"
     prettyprint_outcomes(double_outcomes)
+    print "\n*** HIT OUTCOMES ***"
+    prettyprint_outcomes(hit_outcomes)
+
+def calculate_percent(pair_nums, i, j):
+    return (float(pair_nums[i][j][0]) / float(pair_nums[i][j][1]))
 
 def prettyprint_outcomes(outcomes):
     percents = {}
@@ -147,7 +199,7 @@ def prettyprint_outcomes(outcomes):
     for v in percents:
         print "%d" % v
         for upc in percents[v]:
-            print "\t%d: %.3f" % (upc, percents[v][upc])
+            print "\t%d: %.4f" % (upc, percents[v][upc])
 
             if KEEP_TIMING:
                 end_t = time()
