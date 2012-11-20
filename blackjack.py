@@ -21,6 +21,7 @@ N_DECKS = 6
 STAY_OUTCOMES_FILE = "./stay_outcomes_%s.txt" % (N_HANDS)
 DOUBLE_OUTCOMES_FILE = "./double_outcomes_%s.txt" % (N_HANDS)
 HIT_OUTCOMES_FILE = "./hit_outcomes_%s.txt" % (N_HANDS)
+MOVE_OUTCOMES_FILE = "./move_outcomes_%s.txt" % (N_HANDS)
 
 KEEP_TIMING = 0
 
@@ -170,19 +171,87 @@ def create_hit_outcomes(desired_iterations):
     pickle_outcomes(hit_outcomes, HIT_OUTCOMES_FILE)
     return hit_outcomes
 
+def create_move_outcomes(desired_iterations):
+    try:
+        move_outcomes = unpickle_outcomes(MOVE_OUTCOMES_FILE, desired_iterations)
+        print "Found pickled run of move outcomes - returning..."
+        return move_outcomes
+    except IOError:
+        print "Couldn't find pickled move outcomes - creating them..."
+    except PickleError:
+        print "Pickle error - continuing..."
+
+    stay_outcomes = create_stay_outcomes(desired_iterations)
+    double_outcomes = create_double_outcomes(desired_iterations)
+    hit_outcomes = create_hit_outcomes(desired_iterations)
+
+    move_outcomes = {"ITERATIONS" : desired_iterations}
+    for v in double_outcomes:
+        if v == "ITERATIONS":
+            continue
+        move_outcomes[v] = {}
+        for upc in double_outcomes[v]:
+            hit_percent = calculate_percent(hit_outcomes, v, upc)
+            stay_percent = calculate_percent(stay_outcomes, v, upc)
+            double_percent = calculate_percent(double_outcomes, v, upc)
+
+            hit_EV = hit_percent
+            stay_EV = stay_percent
+            double_EV = 2*double_percent - .5
+
+            if hit_EV == max(hit_EV, double_EV, stay_EV):
+                s = "Hit"
+            elif stay_EV == max(hit_EV, stay_EV, double_EV):
+                s = "Stay"
+            else:
+                s = "Double"
+
+            move_outcomes[v][upc] = s
+
+    pickle_outcomes(move_outcomes, MOVE_OUTCOMES_FILE)
+    return move_outcomes
+
 def main():
     stay_outcomes = create_stay_outcomes(N_HANDS)
     double_outcomes = create_double_outcomes(N_HANDS)
     hit_outcomes = create_hit_outcomes(N_HANDS)
+    move_outcomes = create_move_outcomes(N_HANDS)
     print "\n*** STAY OUTCOMES ***"
     prettyprint_outcomes(stay_outcomes)
     print "\n*** DOUBLE OUTCOMES ***"
     prettyprint_outcomes(double_outcomes)
     print "\n*** HIT OUTCOMES ***"
     prettyprint_outcomes(hit_outcomes)
+    print "\n*** MOVE OUTCOMES ***"
+    prettyprint_moves(move_outcomes)
 
 def calculate_percent(pair_nums, i, j):
     return (float(pair_nums[i][j][0]) / float(pair_nums[i][j][1]))
+
+def prettyprint_moves(moves):
+    sys.stdout.write("\t|")
+    for i in range(1, 11):
+        if not i == 10:
+            sys.stdout.write("    %d   |" % i)
+        else:
+            sys.stdout.write("   %d   |" % i)
+
+    sys.stdout.write("\n")
+    for j in range(1, 100):
+        sys.stdout.write("-")
+
+    sys.stdout.write("\n")
+
+    for v in moves:
+        if v == "ITERATIONS":
+            continue
+        sys.stdout.write("%d\t|" % v)
+        for upc in moves[v]:
+            sys.stdout.write(" %s |" % moves[v][upc])
+        sys.stdout.write("\n")
+        for j in range(1, 100):
+            sys.stdout.write("-")
+        sys.stdout.write("\n")
 
 def prettyprint_outcomes(outcomes):
     percents = {}
