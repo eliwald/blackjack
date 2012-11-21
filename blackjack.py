@@ -267,7 +267,9 @@ def create_moves(desired_iterations):
             stay_EV = stay_percent
             double_EV = 2*double_percent - .5
 
-            if hit_EV == max(hit_EV, double_EV, stay_EV):
+            if max(hit_EV, double_EV, stay_EV) < .25:
+                s = "Sur"
+            elif hit_EV == max(hit_EV, double_EV, stay_EV):
                 s = "Hit"
             elif stay_EV == max(hit_EV, stay_EV, double_EV):
                 s = "Stay"
@@ -275,7 +277,9 @@ def create_moves(desired_iterations):
                 s = "Double"
             hard_moves[v][upc] = s
 
-            if soft_EV == max(soft_EV, double_EV, stay_EV):
+            if max(soft_EV, double_EV, stay_EV) < .25:
+                s = "Sur"
+            elif soft_EV == max(soft_EV, double_EV, stay_EV):
                 s = "Hit"
             elif stay_EV == max(soft_EV, stay_EV, double_EV):
                 s = "Stay"
