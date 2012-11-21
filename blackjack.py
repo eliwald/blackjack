@@ -175,7 +175,7 @@ def create_hit_and_soft_outcomes(desired_iterations):
                         percent_win = 4 * max(hit_percent, stay_percent)
                     else:
                         percent_win = max(hit_percent, stay_percent)
-                    hit_outcomes[cur_val][upc][0] += percent_win
+                    hard_hit_outcomes[cur_val][upc][0] += percent_win
 
             # Missing A
             hard_hit_outcomes[cur_val][upc][1] = 12
@@ -217,9 +217,9 @@ def create_hit_and_soft_outcomes(desired_iterations):
 
             stay_percent = calculate_percent(stay_outcomes, new_val, upc)
             percent_win = max(hit_percent, stay_percent)
-            hit_outcomes[cur_val][upc][0] += percent_win
+            hard_hit_outcomes[cur_val][upc][0] += percent_win
 
-            hit_outcomes[cur_val][upc][1] += 1
+            hard_hit_outcomes[cur_val][upc][1] += 1
 
     pickle_outcomes(hard_hit_outcomes, HARD_HIT_OUTCOMES_FILE)
     pickle_outcomes(soft_hit_outcomes, SOFT_HIT_OUTCOMES_FILE)
