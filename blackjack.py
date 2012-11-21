@@ -258,31 +258,31 @@ def create_moves(desired_iterations):
         hard_moves[v] = {}
         soft_moves[v] = {}
         for upc in double_outcomes[v]:
-            hit_percent = calculate_percent(hard_hit_outcomes, v, upc)
-            soft_percent = calculate_percent(soft_hit_outcomes, v, upc)
+            hard_hit_percent = calculate_percent(hard_hit_outcomes, v, upc)
+            soft_hit_percent = calculate_percent(soft_hit_outcomes, v, upc)
             stay_percent = calculate_percent(stay_outcomes, v, upc)
             double_percent = calculate_percent(double_outcomes, v, upc)
 
-            hit_EV = hit_percent
-            soft_EV = soft_percent
+            hard_hit_EV = hard_hit_percent
+            soft_hit_EV = soft_hit_percent
             stay_EV = stay_percent
             double_EV = 2*double_percent - .5
 
-            if max(hit_EV, double_EV, stay_EV) < .25:
+            if max(hard_hit_EV, double_EV, stay_EV) < .25:
                 s = "Sur"
-            elif hit_EV == max(hit_EV, double_EV, stay_EV):
+            elif hit_EV == max(hard_hit_EV, double_EV, stay_EV):
                 s = "Hit"
-            elif stay_EV == max(hit_EV, stay_EV, double_EV):
+            elif stay_EV == max(hard_hit_EV, stay_EV, double_EV):
                 s = "Stay"
             else:
                 s = "Double"
             hard_moves[v][upc] = s
 
-            if max(soft_EV, double_EV, stay_EV) < .25:
+            if max(soft_hit_EV, double_EV, stay_EV) < .25:
                 s = "Sur"
-            elif soft_EV == max(soft_EV, double_EV, stay_EV):
+            elif soft_EV == max(soft_hit_EV, double_EV, stay_EV):
                 s = "Hit"
-            elif stay_EV == max(soft_EV, stay_EV, double_EV):
+            elif stay_EV == max(soft_hit_EV, stay_EV, double_EV):
                 s = "Stay"
             else:
                 s = "Double"
