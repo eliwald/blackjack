@@ -46,7 +46,7 @@ def create_stay_outcomes(desired_iterations):
     d = Deck(N_DECKS)
     dealer = Dealer()
 
-    for hand_val in range(3, 22):
+    for hand_val in range(4, 22):
         print "HAND VALUE %d" % hand_val
         stay_outcomes[hand_val] = {}
         for dealer_upcard in range(1,11):
@@ -92,12 +92,12 @@ def create_stay_outcomes(desired_iterations):
     pickle_outcomes(stay_outcomes, STAY_OUTCOMES_FILE)
     return stay_outcomes
 
-def create_hard_and_soft_double_outcomes(desired_iterations):
+def create_double_outcomes(desired_iterations):
     HARD_DOUBLE_OUTCOMES_FOUND = False
     try:
         hard_double_outcomes = unpickle_outcomes(HARD_DOUBLE_OUTCOMES_FILE, desired_iterations)
         print "Found pickled run of hard double outcomes..."
-        HARD_DOUBLE_OUTCOMES_FILE = True
+        HARD_DOUBLE_OUTCOMES_FOUND = True
     except IOError:
         print "Couldn't find pickled hard double outcomes - creating hard and soft double outcomes..."
     except PickleError:
@@ -116,32 +116,51 @@ def create_hard_and_soft_double_outcomes(desired_iterations):
     stay_outcomes = create_stay_outcomes(desired_iterations)
     hard_double_outcomes = {"ITERATIONS" : desired_iterations}
     soft_double_outcomes = {"ITERATIONS" : desired_iterations}
-    for v in stay_outcomes:
-        if v == "ITERATIONS" or v == 21:
+    for v in range(4,22):
+        if v == "ITERATIONS":
             continue
+
         hard_double_outcomes[v] = {}
+        soft_double_outcomes[v] = {}
+
+        if v == 21:
+            for upc in stay_outcomes[v]:
+                hard_double_outcomes[v][upc] = [0, 1]
+                soft_double_outcomes[v][upc] = [0, 1]
+            continue
+
         for upc in stay_outcomes[v]:
             hard_double_outcomes[v][upc] = [0, 0]
+            soft_double_outcomes[v][upc] = [0, 0]
 
-            # Hard hits to a 2-10
+            # Hits to a 2-10
             for i in range(2, 11):
                 if v + i <= 21:
-                    stay_percent = (float(stay_outcomes[v + i][upc][0]) / float(stay_outcomes[v + i][upc][1]))
-                    double_outcomes[v][upc][0] += 4 * stay_percent if i == 10 else stay_percent
+                    new_val = v + i
+                    stay_percent = calculate_percent(stay_outcomes, new_val, upc)
+                    hard_double_outcomes[v][upc][0] += 4 * stay_percent if i == 10 else stay_percent
+                    soft_double_outcomes[v][upc][0] += 4 * stay_percent if i == 10 else stay_percent
+                else:
+                    new_val = v + i - 10
+                    stay_percent = calculate_percent(stay_outcomes, new_val, upc)
+                    soft_double_outcomes[v][upc][0] += 4 * stay_percent if i == 10 else stay_percent
 
             # Aces
             if v + 11 <= 21:
                 card_val = 11
             else:
                 card_val = 1
-            double_outcomes[v][upc][0] += float(stay_outcomes[v + card_val][upc][0]) / float(stay_outcomes[v + card_val][upc][1])
+            hard_double_outcomes[v][upc][0] += calculate_percent(stay_outcomes, v + card_val, upc)
+            soft_double_outcomes[v][upc][0] += calculate_percent(stay_outcomes, v + card_val, upc)
 
-            double_outcomes[v][upc][1] = 13
+            hard_double_outcomes[v][upc][1] = 13
+            soft_double_outcomes[v][upc][1] = 13
 
-    pickle_outcomes(double_outcomes, DOUBLE_OUTCOMES_FILE)
-    return double_outcomes
+    pickle_outcomes(hard_double_outcomes, HARD_DOUBLE_OUTCOMES_FILE)
+    pickle_outcomes(soft_double_outcomes, SOFT_DOUBLE_OUTCOMES_FILE)
+    return (hard_double_outcomes, soft_double_outcomes)
 
-def create_hit_and_soft_outcomes(desired_iterations):
+def create_hit_outcomes(desired_iterations):
     HARD_HIT_OUTCOMES_FOUND = False
     try:
         hard_hit_outcomes = unpickle_outcomes(HARD_HIT_OUTCOMES_FILE, desired_iterations)
@@ -166,12 +185,11 @@ def create_hit_and_soft_outcomes(desired_iterations):
     hard_hit_outcomes = {"ITERATIONS" : desired_iterations}
     soft_hit_outcomes = {"ITERATIONS" : desired_iterations}
     hard_hit_outcomes[21] = {}
-    soft_hit_outcomes[20] = {}
     for upc in stay_outcomes[21]:
         hard_hit_outcomes[21][upc] = [0, 13]
 
     # Hard hits to a 2-10
-    for cur_val in reversed(range(3, 21)):
+    for cur_val in reversed(range(4, 21)):
         hard_hit_outcomes[cur_val] = {}
         for upc in stay_outcomes[cur_val]:
             hard_hit_outcomes[cur_val][upc] = [0,0]
@@ -191,7 +209,7 @@ def create_hit_and_soft_outcomes(desired_iterations):
             hard_hit_outcomes[cur_val][upc][1] = 12
 
     # Soft hits
-    for cur_val in reversed(range(12,22)):
+    for cur_val in reversed(range(4,22)):
         soft_hit_outcomes[cur_val] = {}
         for upc in stay_outcomes[cur_val]:
             soft_hit_outcomes[cur_val][upc] = [0,0]
@@ -215,7 +233,7 @@ def create_hit_and_soft_outcomes(desired_iterations):
             soft_hit_outcomes[cur_val][upc][1] = 13
 
     # Hard hits to an A
-    for cur_val in reversed(range(3, 21)):
+    for cur_val in reversed(range(4, 21)):
         for upc in stay_outcomes[cur_val]:
 
             if cur_val + 11 <= 21:
@@ -257,32 +275,35 @@ def create_moves(desired_iterations):
             print "Pickle error - continuing..."
 
     stay_outcomes = create_stay_outcomes(desired_iterations)
-    (hard_double_outcomes, soft_double_outcomes) = create_hard_and_soft_double_outcomes(desired_iterations)
-    (hard_hit_outcomes, soft_hit_outcomes) = create_hit_and_soft_outcomes(desired_iterations)
+    (hard_double_outcomes, soft_double_outcomes) = create_double_outcomes(desired_iterations)
+    (hard_hit_outcomes, soft_hit_outcomes) = create_hit_outcomes(desired_iterations)
 
     hard_moves = {"ITERATIONS" : desired_iterations}
     soft_moves = {"ITERATIONS" : desired_iterations}
-    for v in hard_double_outcomes:
-        if v == "ITERATIONS":
-            continue
+    for v in range(4,22):
         hard_moves[v] = {}
         soft_moves[v] = {}
-        for upc in hard_double_outcomes[v]:
-            hard_hit_percent = calculate_percent(hard_hit_outcomes, v, upc)
-            soft_hit_percent = calculate_percent(soft_hit_outcomes, v, upc)
+
+        for upc in range(1,11):
             stay_percent = calculate_percent(stay_outcomes, v, upc)
+
+            hard_hit_percent = calculate_percent(hard_hit_outcomes, v, upc)
             hard_double_percent = calculate_percent(hard_double_outcomes, v, upc)
+
+            soft_hit_percent = calculate_percent(soft_hit_outcomes, v, upc)
             soft_double_percent = calculate_percent(soft_double_outcomes, v, upc)
 
-            hard_hit_EV = hard_hit_percent
-            soft_hit_EV = soft_hit_percent
             stay_EV = stay_percent
+
+            hard_hit_EV = hard_hit_percent
             hard_double_EV = 2*hard_double_percent - .5
+
+            soft_hit_EV = soft_hit_percent
             soft_double_EV = 2*soft_double_percent - .5
 
             if max(hard_hit_EV, hard_double_EV, stay_EV) < .25:
                 s = "Sur"
-            elif hit_EV == max(hard_hit_EV, hard_double_EV, stay_EV):
+            elif hard_hit_EV == max(hard_hit_EV, hard_double_EV, stay_EV):
                 s = "Hit"
             elif stay_EV == max(hard_hit_EV, stay_EV, hard_double_EV):
                 s = "Stay"
@@ -292,7 +313,7 @@ def create_moves(desired_iterations):
 
             if max(soft_hit_EV, soft_double_EV, stay_EV) < .25:
                 s = "Sur"
-            elif soft_EV == max(soft_hit_EV, soft_double_EV, stay_EV):
+            elif soft_hit_EV == max(soft_hit_EV, soft_double_EV, stay_EV):
                 s = "Hit"
             elif stay_EV == max(soft_hit_EV, stay_EV, soft_double_EV):
                 s = "Stay"
@@ -306,35 +327,39 @@ def create_moves(desired_iterations):
 
 def main():
     stay_outcomes = create_stay_outcomes(N_HANDS)
-    double_outcomes = create_double_outcomes(N_HANDS)
-    (hard_hit_outcomes, soft_hit_outcomes) = create_hit_and_soft_outcomes(N_HANDS)
+    (hard_double_outcomes, soft_double_outcomes) = create_double_outcomes(N_HANDS)
+    (hard_hit_outcomes, soft_hit_outcomes) = create_hit_outcomes(N_HANDS)
     (hard_moves, soft_moves) = create_moves(N_HANDS)
     print "\n*** STAY OUTCOMES ***"
     prettyprint_outcomes(stay_outcomes)
-    print "\n*** DOUBLE OUTCOMES ***"
-    prettyprint_outcomes(double_outcomes)
     print "\n*** HARD HIT OUTCOMES ***"
     prettyprint_outcomes(hard_hit_outcomes)
+    print "\n*** HARD DOUBLE OUTCOMES ***"
+    prettyprint_outcomes(hard_double_outcomes)
     print "\n*** SOFT HIT OUTCOMES ***"
-    prettyprint_outcomes(soft_hit_outcomes)
+    prettyprint_outcomes(soft_hit_outcomes, 12)
+    print "\n*** SOFT DOUBLE OUTCOMES ***"
+    prettyprint_outcomes(soft_double_outcomes, 12)
     print "\n*** MOVE OUTCOMES ***"
     print "\n*** HARD MOVES ***"
     prettyprint_moves(hard_moves)
     print "\n*** SOFT MOVES ***"
-    prettyprint_moves(soft_moves)
+    prettyprint_moves(soft_moves, 12)
 
 def calculate_percent(pair_nums, i, j):
     return (float(pair_nums[i][j][0]) / float(pair_nums[i][j][1]))
 
-def prettyprint_moves(moves):
+def prettyprint_moves(moves, min_val=4):
     sys.stdout.write("\t|")
-    for i in range(1, 11):
+    for i in range(2, 11):
         if not i == 10:
             sys.stdout.write("    %d   |" % i)
         else:
             sys.stdout.write("   %d   |" % i)
 
+    sys.stdout.write("    A   |")
     sys.stdout.write("\n")
+
     for j in range(1, 100):
         sys.stdout.write("-")
 
@@ -343,15 +368,33 @@ def prettyprint_moves(moves):
     for v in moves:
         if v == "ITERATIONS":
             continue
+        if v < min_val:
+            continue
         sys.stdout.write("%d\t|" % v)
         for upc in moves[v]:
-            sys.stdout.write(" %s |" % moves[v][upc])
+            move_str = moves[v][upc]
+            if upc == 1:
+                continue
+            sys.stdout.write(" ")
+            sys.stdout.write("%s" % move_str)
+            for i in range(1, 8 - len(move_str)):
+                sys.stdout.write(" ")
+            sys.stdout.write("|")
+
+        move_str = moves[v][1]
+        sys.stdout.write(" ")
+        sys.stdout.write("%s" % move_str)
+        for i in range(1, 8 - len(move_str)):
+            sys.stdout.write(" ")
+        sys.stdout.write("|")
+
         sys.stdout.write("\n")
+
         for j in range(1, 100):
             sys.stdout.write("-")
         sys.stdout.write("\n")
 
-def prettyprint_outcomes(outcomes):
+def prettyprint_outcomes(outcomes, min_val=4):
     percents = {}
     for v in outcomes:
         if v == "ITERATIONS":
@@ -359,35 +402,41 @@ def prettyprint_outcomes(outcomes):
         percents[v] = {}
         for upc in outcomes[v]:
             try:
-                percents[v][upc] = float(outcomes[v][upc][0]) / float(outcomes[v][upc][1])
+                percents[v][upc] = calculate_percent(outcomes, v, upc)
             except ZeroDivisionError:
                 percents[v][upc] = -1.0
 
     sys.stdout.write("\t|")
-    for i in range(1, 11):
+    for i in range(2, 11):
         if not i == 10:
             sys.stdout.write("    %d   |" % i)
         else:
             sys.stdout.write("   %d   |" % i)
-
+    sys.stdout.write("    A   |")
     sys.stdout.write("\n")
+
     for j in range(1, 100):
         sys.stdout.write("-")
 
     sys.stdout.write("\n")
 
     for v in percents:
+        if v < min_val:
+            continue
         sys.stdout.write("%d\t|" % v)
         for upc in percents[v]:
+            if upc == 1:
+                continue
             if (100 * percents[v][upc] > 10):
                 sys.stdout.write(" %.2f%% |" % (100 * percents[v][upc]))
             else:
                 sys.stdout.write(" 0%.2f%% |" % (100 * percents[v][upc]))
 
-            if KEEP_TIMING:
-                end_t = time()
-                time_map["float conversion"] = end_t - start_t
-                sys.stdout.write(str(time_map) + "\n")
+        if (100 * percents[v][1] > 10):
+            sys.stdout.write(" %.2f%% |" % (100 * percents[v][1]))
+        else:
+            sys.stdout.write(" 0%.2f%% |" % (100 * percents[v][1]))
+
         sys.stdout.write("\n")
         for j in range(1, 100):
             sys.stdout.write("-")
