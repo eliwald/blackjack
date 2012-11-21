@@ -19,7 +19,8 @@ else:
 
 N_DECKS = 6
 STAY_OUTCOMES_FILE = "./stay_outcomes_%s.txt" % (N_HANDS)
-DOUBLE_OUTCOMES_FILE = "./double_outcomes_%s.txt" % (N_HANDS)
+HARD_DOUBLE_OUTCOMES_FILE = "./hard_double_outcomes_%s.txt" % (N_HANDS)
+SOFT_DOUBLE_OUTCOMES_FILE = "./soft_double_outcomes_%s.txt" % (N_HANDS)
 HARD_HIT_OUTCOMES_FILE = "./hard_hit_outcomes_%s.txt" % (N_HANDS)
 SOFT_HIT_OUTCOMES_FILE = "./soft_hit_outcomes_%s.txt" % (N_HANDS)
 HARD_MOVES_FILE = "./hard_moves_%s.txt" % (N_HANDS)
@@ -91,27 +92,38 @@ def create_stay_outcomes(desired_iterations):
     pickle_outcomes(stay_outcomes, STAY_OUTCOMES_FILE)
     return stay_outcomes
 
-def create_double_outcomes(desired_iterations):
+def create_hard_and_soft_double_outcomes(desired_iterations):
+    HARD_DOUBLE_OUTCOMES_FOUND = False
     try:
-        double_outcomes = unpickle_outcomes(DOUBLE_OUTCOMES_FILE, desired_iterations)
-        print "Found pickled run of double outcomes - returning..."
-        return double_outcomes
+        hard_double_outcomes = unpickle_outcomes(HARD_DOUBLE_OUTCOMES_FILE, desired_iterations)
+        print "Found pickled run of hard double outcomes..."
+        HARD_DOUBLE_OUTCOMES_FILE = True
     except IOError:
-        print "Couldn't find pickled double_outcomes - creating them..."
+        print "Couldn't find pickled hard double outcomes - creating hard and soft double outcomes..."
     except PickleError:
         print "Pickle error - continuing..."
 
+    if HARD_DOUBLE_OUTCOMES_FOUND:
+        try:
+            soft_double_outcomes = unpickle_outcomes(SOFT_DOUBLE_OUTCOMES_FILE, desired_iterations)
+            print "...and found pickled run of soft double outcomes as well - returning..."
+            return (hard_double_outcomes, soft_double_outcomes)
+        except IOError:
+            print "...but couldn't find pickled soft double outcomes - creating hard double outcomes and soft double outcomes..."
+        except PickleError:
+            print "Pickle error - continuing..."
+
     stay_outcomes = create_stay_outcomes(desired_iterations)
-    double_outcomes = {"ITERATIONS" : desired_iterations}
+    hard_double_outcomes = {"ITERATIONS" : desired_iterations}
     soft_double_outcomes = {"ITERATIONS" : desired_iterations}
     for v in stay_outcomes:
         if v == "ITERATIONS" or v == 21:
             continue
-        double_outcomes[v] = {}
+        hard_double_outcomes[v] = {}
         for upc in stay_outcomes[v]:
-            double_outcomes[v][upc] = [0, 0]
+            hard_double_outcomes[v][upc] = [0, 0]
 
-            # 2-10
+            # Hard hits to a 2-10
             for i in range(2, 11):
                 if v + i <= 21:
                     stay_percent = (float(stay_outcomes[v + i][upc][0]) / float(stay_outcomes[v + i][upc][1]))
@@ -133,32 +145,30 @@ def create_hit_and_soft_outcomes(desired_iterations):
     HARD_HIT_OUTCOMES_FOUND = False
     try:
         hard_hit_outcomes = unpickle_outcomes(HARD_HIT_OUTCOMES_FILE, desired_iterations)
-        print "Found pickled run of hit outcomes..."
+        print "Found pickled run of hard hit outcomes..."
         HARD_HIT_OUTCOMES_FOUND = True
     except IOError:
-        print "Couldn't find pickled hit outcomes - creating hit outcomes and soft outcomes..."
+        print "Couldn't find pickled hard hit outcomes - creating hard hit outcomes and soft hit outcomes..."
     except PickleError:
         print "Pickle error - continuing..."
 
     if HARD_HIT_OUTCOMES_FOUND:
         try:
             soft_hit_outcomes = unpickle_outcomes(SOFT_HIT_OUTCOMES_FILE, desired_iterations)
-            print "...and found pickled run of soft outcomes as well - returning..."
+            print "...and found pickled run of soft hit outcomes as well - returning..."
             return (hard_hit_outcomes, soft_hit_outcomes)
         except IOError:
-            print "...but couldn't find pickled soft outcomes - creating hit outcomes and soft outcomes..."
+            print "...but couldn't find pickled soft hit outcomes - creating hard hit outcomes and soft hit outcomes..."
         except PickleError:
             print "Pickle error - continuing..."
 
     stay_outcomes = create_stay_outcomes(desired_iterations)
-    double_outcomes = create_double_outcomes(desired_iterations)
     hard_hit_outcomes = {"ITERATIONS" : desired_iterations}
     soft_hit_outcomes = {"ITERATIONS" : desired_iterations}
     hard_hit_outcomes[21] = {}
-    soft_hit_outcomes[21] = {}
+    soft_hit_outcomes[20] = {}
     for upc in stay_outcomes[21]:
         hard_hit_outcomes[21][upc] = [0, 13]
-        soft_hit_outcomes[21][upc] = [0, 13]
 
     # Hard hits to a 2-10
     for cur_val in reversed(range(3, 21)):
@@ -181,7 +191,7 @@ def create_hit_and_soft_outcomes(desired_iterations):
             hard_hit_outcomes[cur_val][upc][1] = 12
 
     # Soft hits
-    for cur_val in reversed(range(3,22)):
+    for cur_val in reversed(range(12,22)):
         soft_hit_outcomes[cur_val] = {}
         for upc in stay_outcomes[cur_val]:
             soft_hit_outcomes[cur_val][upc] = [0,0]
@@ -247,42 +257,44 @@ def create_moves(desired_iterations):
             print "Pickle error - continuing..."
 
     stay_outcomes = create_stay_outcomes(desired_iterations)
-    double_outcomes = create_double_outcomes(desired_iterations)
+    (hard_double_outcomes, soft_double_outcomes) = create_hard_and_soft_double_outcomes(desired_iterations)
     (hard_hit_outcomes, soft_hit_outcomes) = create_hit_and_soft_outcomes(desired_iterations)
 
     hard_moves = {"ITERATIONS" : desired_iterations}
     soft_moves = {"ITERATIONS" : desired_iterations}
-    for v in double_outcomes:
+    for v in hard_double_outcomes:
         if v == "ITERATIONS":
             continue
         hard_moves[v] = {}
         soft_moves[v] = {}
-        for upc in double_outcomes[v]:
+        for upc in hard_double_outcomes[v]:
             hard_hit_percent = calculate_percent(hard_hit_outcomes, v, upc)
             soft_hit_percent = calculate_percent(soft_hit_outcomes, v, upc)
             stay_percent = calculate_percent(stay_outcomes, v, upc)
-            double_percent = calculate_percent(double_outcomes, v, upc)
+            hard_double_percent = calculate_percent(hard_double_outcomes, v, upc)
+            soft_double_percent = calculate_percent(soft_double_outcomes, v, upc)
 
             hard_hit_EV = hard_hit_percent
             soft_hit_EV = soft_hit_percent
             stay_EV = stay_percent
-            double_EV = 2*double_percent - .5
+            hard_double_EV = 2*hard_double_percent - .5
+            soft_double_EV = 2*soft_double_percent - .5
 
-            if max(hard_hit_EV, double_EV, stay_EV) < .25:
+            if max(hard_hit_EV, hard_double_EV, stay_EV) < .25:
                 s = "Sur"
-            elif hit_EV == max(hard_hit_EV, double_EV, stay_EV):
+            elif hit_EV == max(hard_hit_EV, hard_double_EV, stay_EV):
                 s = "Hit"
-            elif stay_EV == max(hard_hit_EV, stay_EV, double_EV):
+            elif stay_EV == max(hard_hit_EV, stay_EV, hard_double_EV):
                 s = "Stay"
             else:
                 s = "Double"
             hard_moves[v][upc] = s
 
-            if max(soft_hit_EV, double_EV, stay_EV) < .25:
+            if max(soft_hit_EV, soft_double_EV, stay_EV) < .25:
                 s = "Sur"
-            elif soft_EV == max(soft_hit_EV, double_EV, stay_EV):
+            elif soft_EV == max(soft_hit_EV, soft_double_EV, stay_EV):
                 s = "Hit"
-            elif stay_EV == max(soft_hit_EV, stay_EV, double_EV):
+            elif stay_EV == max(soft_hit_EV, stay_EV, soft_double_EV):
                 s = "Stay"
             else:
                 s = "Double"
