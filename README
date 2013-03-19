@@ -1,1 +1,7 @@
-Solving basic strategy
+Solved basic strategy for Blackjack.
+
+Rules: Double after split, dealer hits on soft 17, dealer peeks for blackjack, surrender allowed on any dealer upcard.
+
+Running:
+
+python blackjack.py

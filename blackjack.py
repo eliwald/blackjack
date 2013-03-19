@@ -7,7 +7,7 @@ import sys
 from time import time
 from pickle import Pickler, Unpickler, PickleError
 
-DEFAULT_N_HANDS = 10000
+DEFAULT_N_HANDS = 20000000
 if len(sys.argv) > 1:
     try:
         N_HANDS = int(sys.argv[1])
